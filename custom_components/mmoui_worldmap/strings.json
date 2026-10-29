@@ -21,6 +21,9 @@
           },
           "last_country": {
             "name": "Last country"
+          },
+          "places": {
+            "name": "Places"
           }
         }
       },

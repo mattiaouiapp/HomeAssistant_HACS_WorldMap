@@ -10,7 +10,7 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import WorldMapConfigEntry
 from .const import DOMAIN, SIGNAL_PINS_UPDATED
-from .pins import PinStore
+from .pins import PinStore, flag_emoji
 
 
 async def async_setup_entry(
@@ -58,14 +58,35 @@ class _WorldMapSensor(SensorEntity):
 class PlacesSensor(_WorldMapSensor):
     _key = "places"
     _attr_icon = "mdi:map-marker-multiple"
+    # The full list is for dashboards; it would bloat the recorder at every change.
+    _unrecorded_attributes = frozenset({"places"})
 
     def _refresh(self) -> None:
-        pins = sorted(self._pins.pins.values(), key=lambda p: p.date or p.created)
+        # Newest trip first; flags without a date go last, newest added first.
+        pins = sorted(
+            self._pins.pins.values(),
+            key=lambda p: (p.date is not None, p.date or "", p.created),
+            reverse=True,
+        )
         self._attr_native_value = len(pins)
-        last = pins[-1] if pins else None
+        places = [
+            {
+                "id": p.id,
+                "name": p.name,
+                "country": self._pins.country_label(p),
+                "country_code": p.country,
+                "flag": flag_emoji(p.country),
+                "color": p.color,
+                "date": p.date,
+                "notes": p.notes,
+            }
+            for p in pins
+        ]
+        last = places[0] if places else None
         self._attr_extra_state_attributes: dict[str, Any] = {
-            "last_place": last.name if last else None,
-            "last_country": last.country_name if last else None,
+            "last_place": last["name"] if last else None,
+            "last_country": last["country"] if last else None,
+            "places": places,
         }
 
 
@@ -74,7 +95,9 @@ class CountriesSensor(_WorldMapSensor):
     _attr_icon = "mdi:earth"
 
     def _refresh(self) -> None:
-        countries = {p.country: p.country_name for p in self._pins.pins.values() if p.country}
+        countries = {
+            p.country: self._pins.country_label(p) for p in self._pins.pins.values() if p.country
+        }
         self._attr_native_value = len(countries)
         self._attr_extra_state_attributes = {
             "countries": sorted(countries.values()),

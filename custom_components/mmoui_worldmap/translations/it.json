@@ -21,6 +21,9 @@
           },
           "last_country": {
             "name": "Ultimo paese"
+          },
+          "places": {
+            "name": "Luoghi"
           }
         }
       },

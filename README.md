@@ -49,8 +49,12 @@ Si impostano tutte anche dall'editor visuale della card.
 
 | Entità | Stato | Attributi |
 | --- | --- | --- |
-| `sensor.worldmap_places` | Numero di bandierine | `last_place`, `last_country` |
+| `sensor.worldmap_places` | Numero di bandierine | `last_place`, `last_country`, `places` (elenco completo: nome, paese, bandiera, colore, data, note; non salvato nello storico) |
 | `sensor.worldmap_countries` | Numero di paesi visitati | `countries` (nomi), `codes` (codici ISO) |
+
+## Dashboard
+
+[`dashboards/viaggi.yaml`](dashboards/viaggi.yaml) contiene una dashboard completa: la mappa, i numeri del viaggiatore, i paesi visitati e il diario dei luoghi. Crea una dashboard vuota, apri l'editor della configurazione grezza e incolla il file.
 
 ## Servizi
 

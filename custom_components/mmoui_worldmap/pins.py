@@ -39,6 +39,7 @@ class Pin:
 class _Country:
     iso: str
     name: str
+    name_it: str
     bbox: tuple[float, float, float, float]
     # Each polygon is its outer ring followed by its holes.
     polygons: list[list[Ring]]
@@ -80,9 +81,15 @@ def _load_countries(path: Path) -> list[_Country]:
         ys = [y for polygon in polygons for _, y in polygon[0]]
         props = feature["properties"]
         countries.append(
-            _Country(props["iso"], props["name"], (min(xs), min(ys), max(xs), max(ys)), polygons)
+            _Country(props["iso"], props["name"], props["name_it"], (min(xs), min(ys), max(xs), max(ys)), polygons)
         )
     return countries
+
+
+def flag_emoji(iso: str | None) -> str:
+    if not iso or len(iso) != 2 or not iso.isalpha():
+        return ""
+    return "".join(chr(0x1F1E6 + ord(c) - ord("A")) for c in iso.upper())
 
 
 def normalize_longitude(lon: float) -> float:
@@ -96,12 +103,14 @@ class PinStore:
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._countries_path = www / COUNTRIES_FILE
         self._countries: list[_Country] = []
+        self._names: dict[str, _Country] = {}
         self.pins: dict[str, Pin] = {}
 
     async def async_load(self) -> None:
         self._countries = await self._hass.async_add_executor_job(
             _load_countries, self._countries_path
         )
+        self._names = {c.iso: c for c in self._countries}
         stored = await self._store.async_load() or {}
         self.pins = {p["id"]: Pin(**p) for p in stored.get("pins", [])}
 
@@ -125,6 +134,13 @@ class PinStore:
                 if (distance := _distance_to_ring(lon, lat, outer, scale)) < best:
                     nearest, best = country, distance
         return nearest
+
+    def country_label(self, pin: Pin) -> str | None:
+        """The pin's country name in Home Assistant's language (Italian or English)."""
+        country = self._names.get(pin.country or "")
+        if not country:
+            return pin.country_name
+        return country.name_it if self._hass.config.language.startswith("it") else country.name
 
     def as_list(self) -> list[dict[str, Any]]:
         return [asdict(p) for p in self.pins.values()]
