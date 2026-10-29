@@ -6,7 +6,7 @@
 (() => {
 
 // Keep in step with the version in manifest.json.
-const VERSION = "1.3.1";
+const VERSION = "1.4.0";
 const BASE = "/mmoui_worldmap/";
 const asset = (file) => `${BASE}${file}?v=${VERSION}`;
 
@@ -81,13 +81,14 @@ function loadLeaflet() {
 }
 
 function loadCountries() {
-  countriesPromise ??= fetch(asset("countries.geojson")).then((r) => r.json());
+  // Plain JSON in .js files: Home Assistant gzips those (see dev/build_card_data.py).
+  countriesPromise ??= fetch(asset("countries-lite.js")).then((r) => r.json());
   return countriesPromise;
 }
 
 // Airports with an IATA code that are large, medium or have scheduled flights (OurAirports).
 function loadAirports() {
-  airportsPromise ??= fetch(asset("airports.json")).then((r) => r.json()).then((data) =>
+  airportsPromise ??= fetch(asset("airports.js")).then((r) => r.json()).then((data) =>
     data.airports.map(([iata, icao, name, city, country, lat, lon, size, keywords]) => ({
       iata, icao, name, city, country, lat, lon, size,
       text: fold(`${name} ${city} ${keywords}`),

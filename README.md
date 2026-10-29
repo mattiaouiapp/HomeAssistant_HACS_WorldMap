@@ -88,7 +88,8 @@ data:
 
 - Le bandierine sono salvate in `<config>/.storage/mmoui_worldmap.pins` e quindi finiscono nei backup di Home Assistant.
 - Il paese di ogni bandierina viene calcolato in locale, sui confini [Natural Earth](https://www.naturalearthdata.com) 1:50m inclusi nell'integrazione. Un punto appena fuori dalla costa conta per il paese più vicino, entro circa 30 km.
-- Le tile della mappa arrivano da Esri (o da OpenStreetMap, o dal server indicato). La ricerca e il nome proposto arrivano da [Nominatim](https://nominatim.openstreetmap.org). Le chiamate partono dal browser.
+- La card disegna una versione semplificata degli stessi confini, più leggera da scaricare e da disegnare. `dev/build_card_data.py` la rigenera insieme all'elenco degli aeroporti.
+- Le tile della mappa arrivano da Esri (o da OpenStreetMap, o dal server indicato). La ricerca e il nome proposto arrivano da [Nominatim](https://nominatim.openstreetmap.org), quindi si trovano i luoghi e gli hotel presenti in OpenStreetMap. Le chiamate partono dal browser.
 - [Leaflet](https://leafletjs.com) 1.9.4 è incluso nell'integrazione, come l'elenco dei circa 4.100 aeroporti con codice IATA e voli di linea di [OurAirports](https://ourairports.com) (dati di pubblico dominio).
 
 ## Sviluppo
