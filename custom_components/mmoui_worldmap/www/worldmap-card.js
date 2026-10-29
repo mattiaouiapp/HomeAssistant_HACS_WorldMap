@@ -4,10 +4,9 @@
 // Works as a module (auto-loaded by the integration) and as a plain script
 // (a Lovelace resource of type "JavaScript"), and loading it twice is harmless.
 (() => {
-if (customElements.get("worldmap-card")) return;
 
 // Keep in step with the version in manifest.json.
-const VERSION = "1.3.0";
+const VERSION = "1.3.1";
 const BASE = "/mmoui_worldmap/";
 const asset = (file) => `${BASE}${file}?v=${VERSION}`;
 
@@ -855,8 +854,16 @@ const CARD_CSS = `
   .form-error { color: var(--error-color, #c62828); font-size: .85em; }
 `;
 
-customElements.define("worldmap-card", WorldMapCard);
-customElements.define("worldmap-card-editor", WorldMapCardEditor);
+// Define without asking customElements.get() first: other frontend plugins
+// wrap the registry, and a wrong answer there kept the card from registering.
+// A second copy of this file just hits "already defined" and stops here.
+try {
+  customElements.define("worldmap-card", WorldMapCard);
+  customElements.define("worldmap-card-editor", WorldMapCardEditor);
+} catch (err) {
+  console.warn("WORLDMAP-CARD not registered (already defined?):", err);
+  return;
+}
 
 window.customCards = window.customCards || [];
 window.customCards.push({
