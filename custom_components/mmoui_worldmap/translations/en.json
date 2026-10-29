@@ -38,6 +38,33 @@
             "name": "Codes"
           }
         }
+      },
+      "map_places": {
+        "name": "{map} places",
+        "unit_of_measurement": "places",
+        "state_attributes": {
+          "last_place": {
+            "name": "Last place"
+          },
+          "last_country": {
+            "name": "Last country"
+          },
+          "places": {
+            "name": "Places"
+          }
+        }
+      },
+      "map_countries": {
+        "name": "{map} countries",
+        "unit_of_measurement": "countries",
+        "state_attributes": {
+          "countries": {
+            "name": "Countries"
+          },
+          "codes": {
+            "name": "Codes"
+          }
+        }
       }
     }
   },
@@ -77,6 +104,10 @@
         "notes": {
           "name": "Notes",
           "description": "Free notes."
+        },
+        "map": {
+          "name": "Map",
+          "description": "Map of the flag, e.g. airports (lowercase letters, digits and _). Defaults to the default map."
         }
       }
     },
@@ -111,6 +142,10 @@
         "notes": {
           "name": "Notes",
           "description": "Free notes."
+        },
+        "map": {
+          "name": "Map",
+          "description": "Moves the flag to another map."
         }
       }
     },

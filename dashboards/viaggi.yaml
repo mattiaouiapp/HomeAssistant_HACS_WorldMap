@@ -1,13 +1,16 @@
-# Travels dashboard for MMOUi World Map.
+# Travels and airports dashboard for MMOUi World Map: one tab per map.
 #
 # Uses the World Map card plus built-in cards. To install: Settings -> Dashboards ->
 # Add dashboard -> New dashboard from scratch, open it, then menu (top right) ->
 # Edit dashboard -> menu -> Raw configuration editor, and replace everything with this file.
 #
 # Entity IDs are fixed, so this works whatever language Home Assistant is set to.
+# The Aeroporti tab uses the map "aeroporti"; its sensors
+# (sensor.worldmap_aeroporti_*) appear with the first airport.
 
 title: Viaggi
 views:
+  # ================================================================== Viaggi
   - title: Viaggi
     path: viaggi
     icon: mdi:earth
@@ -108,4 +111,94 @@ views:
 
               {% else %}
               Il diario si riempie man mano che aggiungi bandierine.
+              {% endfor %}
+
+  # ================================================================== Aeroporti
+  - title: Aeroporti
+    path: aeroporti
+    icon: mdi:airplane
+    type: sections
+    max_columns: 3
+    sections:
+      # ------------------------------------------------------------------ Map
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: I miei aeroporti
+            icon: mdi:airplane
+          - type: custom:worldmap-card
+            map: aeroporti
+            title: Aeroporti
+            default_color: "#1e88e5"
+            height: 560
+            grid_options:
+              columns: full
+
+      # ------------------------------------------------------------------ Numbers
+      - type: grid
+        cards:
+          - type: heading
+            heading: In numeri
+            icon: mdi:counter
+          - type: markdown
+            grid_options:
+              columns: full
+            content: |-
+              {% set places = state_attr('sensor.worldmap_aeroporti_places', 'places') or [] %}
+              {% set dated = places | selectattr('date') | map(attribute='date') | sort | list %}
+              {% set countries = states('sensor.worldmap_aeroporti_countries') | int(0) %}
+              {% if places %}
+              {% set last = places[0] %}
+              **Aeroporti:** {{ places | count }} · **Paesi:** {{ countries }}
+
+              **Ultimo:** <font color="{{ last.color }}">⚑</font> {{ last.name }}{% if last.country %} · {{ last.flag }} {{ last.country }}{% endif %}{% if last.date %} · {{ as_datetime(last.date).strftime('%d/%m/%Y') }}{% endif %}
+
+              {% if dated %}
+              **Primo volo:** {{ as_datetime(dated[0]).strftime('%d/%m/%Y') }}
+
+              **Anni di volo:** {{ dated | map('truncate', 4, true, '') | unique | list | length }}
+              {% endif %}
+              **Mondo visitato:** {{ (countries / 195 * 100) | round(1) }}% dei 195 paesi
+              {% else %}
+              Nessun aeroporto ancora: cerca un aeroporto (es. "aeroporto Malpensa") o clicca sulla mappa.
+              {% endif %}
+
+      # ------------------------------------------------------------------ Countries
+      - type: grid
+        cards:
+          - type: heading
+            heading: Paesi visitati
+            icon: mdi:flag-variant
+          - type: markdown
+            grid_options:
+              columns: full
+            content: |-
+              {% set places = state_attr('sensor.worldmap_aeroporti_places', 'places') or [] %}
+              {% set ns = namespace(rows=[]) %}
+              {% for g in places | selectattr('country') | groupby('country') %}
+              {% set ns.rows = ns.rows + [{'name': g.grouper, 'flag': g.list[0].flag, 'n': g.list | length}] %}
+              {% endfor %}
+              {% for c in ns.rows | sort(attribute='name') | sort(attribute='n', reverse=true) %}
+              {{ c.flag }} **{{ c.name }}** · {{ c.n }} {{ 'aeroporto' if c.n == 1 else 'aeroporti' }}
+              {% else %}
+              Ancora nessun paese.
+              {% endfor %}
+
+      # ------------------------------------------------------------------ List
+      - type: grid
+        cards:
+          - type: heading
+            heading: Elenco aeroporti
+            icon: mdi:airport
+          - type: markdown
+            grid_options:
+              columns: full
+            content: |-
+              {% set places = state_attr('sensor.worldmap_aeroporti_places', 'places') or [] %}
+              {% for p in places %}
+              <font color="{{ p.color }}">⚑</font> **{{ p.name }}**{% if p.country %} · {{ p.flag }} {{ p.country }}{% endif %}{% if p.date %} · {{ as_datetime(p.date).strftime('%d/%m/%Y') }}{% endif %}{% if p.notes %}<br><small>{{ p.notes }}</small>{% endif %}
+
+              {% else %}
+              L'elenco si riempie man mano che aggiungi aeroporti.
               {% endfor %}

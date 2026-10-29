@@ -38,6 +38,33 @@
             "name": "Codici"
           }
         }
+      },
+      "map_places": {
+        "name": "{map} luoghi",
+        "unit_of_measurement": "luoghi",
+        "state_attributes": {
+          "last_place": {
+            "name": "Ultimo luogo"
+          },
+          "last_country": {
+            "name": "Ultimo paese"
+          },
+          "places": {
+            "name": "Luoghi"
+          }
+        }
+      },
+      "map_countries": {
+        "name": "{map} paesi",
+        "unit_of_measurement": "paesi",
+        "state_attributes": {
+          "countries": {
+            "name": "Paesi"
+          },
+          "codes": {
+            "name": "Codici"
+          }
+        }
       }
     }
   },
@@ -77,6 +104,10 @@
         "notes": {
           "name": "Note",
           "description": "Note libere."
+        },
+        "map": {
+          "name": "Mappa",
+          "description": "Mappa della bandierina, es. aeroporti (lettere minuscole, cifre e _). Se manca, la mappa predefinita."
         }
       }
     },
@@ -111,6 +142,10 @@
         "notes": {
           "name": "Note",
           "description": "Note libere."
+        },
+        "map": {
+          "name": "Mappa",
+          "description": "Sposta la bandierina su un'altra mappa."
         }
       }
     },

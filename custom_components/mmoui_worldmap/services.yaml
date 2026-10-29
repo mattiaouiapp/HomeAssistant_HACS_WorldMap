@@ -32,6 +32,10 @@ add_pin:
       selector:
         text:
           multiline: true
+    map:
+      example: aeroporti
+      selector:
+        text:
 
 update_pin:
   fields:
@@ -64,6 +68,10 @@ update_pin:
       selector:
         text:
           multiline: true
+    map:
+      example: aeroporti
+      selector:
+        text:
 
 remove_pin:
   fields:

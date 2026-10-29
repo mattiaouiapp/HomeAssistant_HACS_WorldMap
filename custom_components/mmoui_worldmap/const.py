@@ -18,5 +18,8 @@ ATTR_LONGITUDE = "longitude"
 ATTR_COLOR = "color"
 ATTR_DATE = "date"
 ATTR_NOTES = "notes"
+ATTR_MAP = "map"
 
 DEFAULT_COLOR = "#e53935"
+# Flags are grouped in maps (e.g. travels, airports); this one has the plain entity IDs.
+DEFAULT_MAP = "default"

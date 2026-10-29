@@ -9,7 +9,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import WorldMapConfigEntry
-from .const import DOMAIN, SIGNAL_PINS_UPDATED
+from .const import DEFAULT_MAP, DOMAIN, SIGNAL_PINS_UPDATED
 from .pins import PinStore, flag_emoji
 
 
@@ -18,7 +18,20 @@ async def async_setup_entry(
     entry: WorldMapConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    async_add_entities([PlacesSensor(entry), CountriesSensor(entry)])
+    store = entry.runtime_data
+    added: set[str] = set()
+
+    @callback
+    def add_new_maps() -> None:
+        new = store.maps() - added
+        added.update(new)
+        async_add_entities(
+            sensor(entry, map_id) for map_id in sorted(new) for sensor in (PlacesSensor, CountriesSensor)
+        )
+
+    add_new_maps()
+    # A flag on a new map brings that map's sensors.
+    entry.async_on_unload(async_dispatcher_connect(hass, SIGNAL_PINS_UPDATED, add_new_maps))
 
 
 class _WorldMapSensor(SensorEntity):
@@ -27,12 +40,19 @@ class _WorldMapSensor(SensorEntity):
     _attr_state_class = SensorStateClass.MEASUREMENT
     _key: str
 
-    def __init__(self, entry: WorldMapConfigEntry) -> None:
+    def __init__(self, entry: WorldMapConfigEntry, map_id: str) -> None:
         self._pins: PinStore = entry.runtime_data
-        self._attr_translation_key = self._key
-        self._attr_unique_id = f"{entry.entry_id}_{self._key}"
+        self._map = map_id
         # Fixed IDs, whatever the language, so dashboards and templates work everywhere.
-        self.entity_id = f"sensor.worldmap_{self._key}"
+        if map_id == DEFAULT_MAP:
+            self._attr_translation_key = self._key
+            self._attr_unique_id = f"{entry.entry_id}_{self._key}"
+            self.entity_id = f"sensor.worldmap_{self._key}"
+        else:
+            self._attr_translation_key = f"map_{self._key}"
+            self._attr_translation_placeholders = {"map": map_id.replace("_", " ").capitalize()}
+            self._attr_unique_id = f"{entry.entry_id}_{map_id}_{self._key}"
+            self.entity_id = f"sensor.worldmap_{map_id}_{self._key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name="World Map",
@@ -64,7 +84,7 @@ class PlacesSensor(_WorldMapSensor):
     def _refresh(self) -> None:
         # Newest trip first; flags without a date go last, newest added first.
         pins = sorted(
-            self._pins.pins.values(),
+            self._pins.of_map(self._map),
             key=lambda p: (p.date is not None, p.date or "", p.created),
             reverse=True,
         )
@@ -96,7 +116,7 @@ class CountriesSensor(_WorldMapSensor):
 
     def _refresh(self) -> None:
         countries = {
-            p.country: self._pins.country_label(p) for p in self._pins.pins.values() if p.country
+            p.country: self._pins.country_label(p) for p in self._pins.of_map(self._map) if p.country
         }
         self._attr_native_value = len(countries)
         self._attr_extra_state_attributes = {

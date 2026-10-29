@@ -7,7 +7,7 @@
 if (customElements.get("worldmap-card")) return;
 
 // Keep in step with the version in manifest.json.
-const VERSION = "1.0.1";
+const VERSION = "1.1.0";
 const BASE = "/mmoui_worldmap/";
 const asset = (file) => `${BASE}${file}?v=${VERSION}`;
 
@@ -132,6 +132,9 @@ class WorldMapCard extends HTMLElement {
   }
 
   setConfig(config) {
+    const map = String(config.map || "default").trim().toLowerCase();
+    if (!/^[a-z0-9_]{1,32}$/.test(map)) throw new Error("map: use lowercase letters, digits or _");
+    const previousMap = this._config?.map;
     this._config = {
       height: 450,
       tiles: "auto",
@@ -139,8 +142,9 @@ class WorldMapCard extends HTMLElement {
       country_opacity: 0.35,
       readonly: false,
       ...config,
+      map,
     };
-    if (this._map) this._rebuild();
+    if (this._map) this._rebuild(previousMap !== map);
   }
 
   set hass(hass) {
@@ -194,13 +198,19 @@ class WorldMapCard extends HTMLElement {
     }
   }
 
-  _rebuild() {
+  _rebuild(mapChanged) {
+    if (mapChanged) {
+      this._unsubscribe();
+      this._pins = [];
+      this._hidden.clear();
+    }
     this._map.remove();
     this._map = null;
     this.shadowRoot.replaceChildren(this.shadowRoot.children[0], this.shadowRoot.children[1]);
     this._buildDom();
     this._buildMap();
     this._render();
+    if (mapChanged) this._subscribe();
     if (this._config.show_countries) loadCountries().then((geo) => { this._geo = geo; this._renderCountries(); });
   }
 
@@ -280,7 +290,7 @@ class WorldMapCard extends HTMLElement {
     if (this._unsub || !this._hass) return;
     const pending = this._hass.connection.subscribeMessage(
       (msg) => { this._pins = msg.pins; this._message.hidden = true; this._render(); },
-      { type: "mmoui_worldmap/subscribe" },
+      { type: "mmoui_worldmap/subscribe", map: this._config.map },
     );
     this._unsub = pending;
     try {
@@ -445,7 +455,7 @@ class WorldMapCard extends HTMLElement {
       const data = { name: name.value.trim(), color, date: date.value || null, notes: notes.value.trim() };
       const msg = pin
         ? { type: "mmoui_worldmap/update", pin_id: pin.id, ...data }
-        : { type: "mmoui_worldmap/add", latitude: latlng.lat, longitude: latlng.lng, ...data };
+        : { type: "mmoui_worldmap/add", map: this._config.map, latitude: latlng.lat, longitude: latlng.lng, ...data };
       this._call(msg)
         .then(() => { this._rememberColor(color); this._map.closePopup(); })
         .catch((err) => { error.textContent = `${this._t("error")}: ${err?.message || err}`; error.hidden = false; save.disabled = false; });
@@ -464,11 +474,11 @@ class WorldMapCard extends HTMLElement {
   }
 
   _lastColor() {
-    try { return localStorage.getItem("mmoui_worldmap_color"); } catch { return null; }
+    try { return localStorage.getItem(`mmoui_worldmap_color_${this._config.map}`); } catch { return null; }
   }
 
   _rememberColor(color) {
-    try { localStorage.setItem("mmoui_worldmap_color", color); } catch { /* private mode */ }
+    try { localStorage.setItem(`mmoui_worldmap_color_${this._config.map}`, color); } catch { /* private mode */ }
   }
 
   async _reverseGeocode(latlng) {
@@ -535,7 +545,12 @@ class WorldMapCardEditor extends HTMLElement {
     this._form.hass = this._hass;
     this._form.data = { height: 450, tiles: "auto", show_countries: true, country_opacity: 0.35, readonly: false, ...this._config };
     this._form.schema = [
-      { name: "title", label: it ? "Titolo" : "Title", selector: { text: {} } },
+      {
+        type: "grid", name: "", schema: [
+          { name: "title", label: it ? "Titolo" : "Title", selector: { text: {} } },
+          { name: "map", label: it ? "Mappa (es. aeroporti; vuoto = predefinita)" : "Map (e.g. airports; empty = default)", selector: { text: {} } },
+        ],
+      },
       {
         type: "grid", name: "", schema: [
           { name: "height", label: it ? "Altezza (px)" : "Height (px)", selector: { number: { min: 200, max: 1200, step: 10, mode: "box" } } },

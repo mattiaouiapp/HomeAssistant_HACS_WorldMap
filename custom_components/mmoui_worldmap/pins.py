@@ -14,7 +14,13 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 
-from .const import COUNTRIES_FILE, SIGNAL_PINS_UPDATED, STORAGE_KEY, STORAGE_VERSION
+from .const import (
+    COUNTRIES_FILE,
+    DEFAULT_MAP,
+    SIGNAL_PINS_UPDATED,
+    STORAGE_KEY,
+    STORAGE_VERSION,
+)
 
 type Ring = list[tuple[float, float]]
 
@@ -32,6 +38,7 @@ class Pin:
     country_name: str | None = None
     date: str | None = None
     notes: str = ""
+    map: str = DEFAULT_MAP
     created: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
@@ -142,8 +149,15 @@ class PinStore:
             return pin.country_name
         return country.name_it if self._hass.config.language.startswith("it") else country.name
 
-    def as_list(self) -> list[dict[str, Any]]:
-        return [asdict(p) for p in self.pins.values()]
+    def maps(self) -> set[str]:
+        return {DEFAULT_MAP} | {p.map for p in self.pins.values()}
+
+    def of_map(self, map_id: str) -> list[Pin]:
+        return [p for p in self.pins.values() if p.map == map_id]
+
+    def as_list(self, map_id: str | None = None) -> list[dict[str, Any]]:
+        pins = self.pins.values() if map_id is None else self.of_map(map_id)
+        return [asdict(p) for p in pins]
 
     @callback
     def _changed(self) -> None:

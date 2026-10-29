@@ -29,11 +29,13 @@ from .const import (
     ATTR_DATE,
     ATTR_LATITUDE,
     ATTR_LONGITUDE,
+    ATTR_MAP,
     ATTR_NAME,
     ATTR_NOTES,
     ATTR_PIN_ID,
     CARD_FILE,
     DEFAULT_COLOR,
+    DEFAULT_MAP,
     DOMAIN,
     SIGNAL_PINS_UPDATED,
     STORAGE_KEY,
@@ -63,8 +65,13 @@ def _date(value: Any) -> str | None:
     return cv.date(value).isoformat()
 
 
+_map_id = vol.All(
+    cv.string, vol.Match(r"^[a-z0-9_]{1,32}$", msg="map must be lowercase letters, digits or _")
+)
+
 # Optional fields shared by add and update; add makes name/coordinates required.
 _FIELDS = {
+    vol.Optional(ATTR_MAP): _map_id,
     vol.Optional(ATTR_COLOR): _color,
     vol.Optional(ATTR_DATE): vol.Any(None, _date),
     vol.Optional(ATTR_NOTES): vol.All(vol.Any(None, cv.string), lambda v: v or ""),
@@ -106,6 +113,7 @@ def _pin_or_raise(store: PinStore, pin_id: str) -> None:
 def _add(store: PinStore, data: dict[str, Any]) -> dict[str, Any]:
     fields = {k: v for k, v in data.items() if k != "type" and k != "id"}
     fields.setdefault(ATTR_COLOR, DEFAULT_COLOR)
+    fields.setdefault(ATTR_MAP, DEFAULT_MAP)
     return asdict(store.async_add(**fields))
 
 
@@ -174,19 +182,21 @@ def _ws_store(hass: HomeAssistant, connection: websocket_api.ActiveConnection, m
         return None
 
 
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/subscribe"})
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/subscribe", vol.Optional(ATTR_MAP): _map_id}
+)
 @callback
 def ws_subscribe(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Send the pins now and again after every change."""
+    """Send the pins (of one map, if given) now and again after every change."""
     if not (store := _ws_store(hass, connection, msg["id"])):
         return
 
     @callback
     def forward() -> None:
         connection.send_message(
-            websocket_api.event_message(msg["id"], {"pins": store.as_list()})
+            websocket_api.event_message(msg["id"], {"pins": store.as_list(msg.get(ATTR_MAP))})
         )
 
     connection.subscriptions[msg["id"]] = async_dispatcher_connect(

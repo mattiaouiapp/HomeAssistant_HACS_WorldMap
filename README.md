@@ -35,6 +35,7 @@ Si impostano tutte anche dall'editor visuale della card.
 | Opzione | Default | Descrizione |
 | --- | --- | --- |
 | `title` | `I miei viaggi` | Titolo della card |
+| `map` | predefinita | Mappa delle bandierine (lettere minuscole, cifre e `_`, es. `aeroporti`). Ogni mappa ha le sue bandierine, i suoi paesi e i suoi sensori |
 | `height` | `450` | Altezza della mappa in pixel |
 | `tiles` | `auto` | `auto` (chiara o scura secondo il tema), `light`, `dark`, `streets`, `osm`, `satellite` |
 | `tile_url` / `tile_attribution` | — | Un server di tile a scelta, es. `https://tile.openstreetmap.org/{z}/{x}/{y}.png` |
@@ -52,9 +53,11 @@ Si impostano tutte anche dall'editor visuale della card.
 | `sensor.worldmap_places` | Numero di bandierine | `last_place`, `last_country`, `places` (elenco completo: nome, paese, bandiera, colore, data, note; non salvato nello storico) |
 | `sensor.worldmap_countries` | Numero di paesi visitati | `countries` (nomi), `codes` (codici ISO) |
 
+Questi sono i sensori della mappa predefinita. Ogni altra mappa ha i suoi, `sensor.worldmap_<mappa>_places` e `sensor.worldmap_<mappa>_countries` (es. `sensor.worldmap_aeroporti_places`), con gli stessi attributi; compaiono con la prima bandierina della mappa.
+
 ## Dashboard
 
-[`dashboards/viaggi.yaml`](dashboards/viaggi.yaml) contiene una dashboard completa: la mappa, i numeri del viaggiatore, i paesi visitati e il diario dei luoghi. Crea una dashboard vuota, apri l'editor della configurazione grezza e incolla il file.
+[`dashboards/viaggi.yaml`](dashboards/viaggi.yaml) contiene una dashboard con due schede: **Viaggi** (la mappa predefinita) e **Aeroporti** (la mappa `aeroporti`). Ognuna ha la mappa, i numeri, i paesi visitati e l'elenco dei luoghi. Crea una dashboard vuota, apri l'editor della configurazione grezza e incolla il file.
 
 ## Servizi
 
@@ -67,6 +70,7 @@ data:
   latitude: 38.72
   longitude: -9.14
   color: "#1e88e5"
+  map: aeroporti  # facoltativo, se manca va sulla mappa predefinita
   date: "2024-05-10"
   notes: Pastéis de nata
 ```
