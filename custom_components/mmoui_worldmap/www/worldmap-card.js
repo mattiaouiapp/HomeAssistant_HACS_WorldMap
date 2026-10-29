@@ -6,7 +6,7 @@
 (() => {
 
 // Keep in step with the version in manifest.json.
-const VERSION = "1.4.0";
+const VERSION = "1.4.1";
 const BASE = "/mmoui_worldmap/";
 const asset = (file) => `${BASE}${file}?v=${VERSION}`;
 
@@ -855,24 +855,40 @@ const CARD_CSS = `
   .form-error { color: var(--error-color, #c62828); font-size: .85em; }
 `;
 
-// Define without asking customElements.get() first: other frontend plugins
-// wrap the registry, and a wrong answer there kept the card from registering.
-// A second copy of this file just hits "already defined" and stops here.
-try {
-  customElements.define("worldmap-card", WorldMapCard);
-  customElements.define("worldmap-card-editor", WorldMapCardEditor);
-} catch (err) {
-  console.warn("WORLDMAP-CARD not registered (already defined?):", err);
-  return;
+// Register once Home Assistant itself is up. The integration loads this file
+// very early, and on Safari (the iOS app) Home Assistant then swaps in its own
+// custom element registry: a card defined before that lands in the old one and
+// the dashboard reports "Custom element doesn't exist".
+// define() is not guarded by customElements.get(): other frontend plugins wrap
+// the registry, and a wrong answer there kept the card from registering. A
+// second copy of this file just hits "already defined".
+function register() {
+  const registry = window.customElements;
+  try {
+    registry.define("worldmap-card", WorldMapCard);
+    registry.define("worldmap-card-editor", WorldMapCardEditor);
+  } catch (err) {
+    console.warn("WORLDMAP-CARD not registered (already defined?):", err);
+    return;
+  }
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "worldmap-card",
+    name: "World Map",
+    description: "Mappa del mondo con le bandierine dei posti visitati",
+    preview: false,
+  });
+  console.info(`%c WORLDMAP-CARD %c ${VERSION} `, "color:#fff;background:#1e88e5;font-weight:700", "color:#1e88e5;background:#fff");
 }
 
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "worldmap-card",
-  name: "World Map",
-  description: "Mappa del mondo con le bandierine dei posti visitati",
-  preview: false,
-});
-
-console.info(`%c WORLDMAP-CARD %c ${VERSION} `, "color:#fff;background:#1e88e5;font-weight:700", "color:#1e88e5;background:#fff");
+if (window.customElements.get("home-assistant")) {
+  register();
+} else {
+  let done = false;
+  const once = () => { if (!done) { done = true; register(); } };
+  window.customElements.whenDefined("home-assistant").then(once);
+  // A page without <home-assistant> still gets the card, late enough not to
+  // beat Home Assistant's start on a slow phone connection.
+  setTimeout(once, 30000);
+}
 })();
