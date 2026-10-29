@@ -37,7 +37,11 @@ class Pin:
     country: str | None = None
     country_name: str | None = None
     date: str | None = None
+    # Last day of a trip; None for a single day.
+    date_end: str | None = None
     notes: str = ""
+    # 1-5 (hearts in the card), for maps such as hotels; None when not rated.
+    rating: int | None = None
     map: str = DEFAULT_MAP
     created: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 

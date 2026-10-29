@@ -27,12 +27,14 @@ from homeassistant.loader import async_get_integration
 from .const import (
     ATTR_COLOR,
     ATTR_DATE,
+    ATTR_DATE_END,
     ATTR_LATITUDE,
     ATTR_LONGITUDE,
     ATTR_MAP,
     ATTR_NAME,
     ATTR_NOTES,
     ATTR_PIN_ID,
+    ATTR_RATING,
     CARD_FILE,
     DEFAULT_COLOR,
     DEFAULT_MAP,
@@ -74,6 +76,8 @@ _FIELDS = {
     vol.Optional(ATTR_MAP): _map_id,
     vol.Optional(ATTR_COLOR): _color,
     vol.Optional(ATTR_DATE): vol.Any(None, _date),
+    vol.Optional(ATTR_DATE_END): vol.Any(None, _date),
+    vol.Optional(ATTR_RATING): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=1, max=5))),
     vol.Optional(ATTR_NOTES): vol.All(vol.Any(None, cv.string), lambda v: v or ""),
 }
 _ADD = {
@@ -110,16 +114,35 @@ def _pin_or_raise(store: PinStore, pin_id: str) -> None:
         )
 
 
+def _check_dates(fields: dict[str, Any], start: str | None, end: str | None) -> None:
+    """Validate a trip's dates; a range ending on its first day is a single day."""
+    if end is not None and start is None:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="date_end_without_date"
+        )
+    if end is not None and end < start:
+        raise ServiceValidationError(translation_domain=DOMAIN, translation_key="date_range")
+    if end is not None and end == start:
+        fields[ATTR_DATE_END] = None
+
+
 def _add(store: PinStore, data: dict[str, Any]) -> dict[str, Any]:
     fields = {k: v for k, v in data.items() if k != "type" and k != "id"}
     fields.setdefault(ATTR_COLOR, DEFAULT_COLOR)
     fields.setdefault(ATTR_MAP, DEFAULT_MAP)
+    _check_dates(fields, fields.get(ATTR_DATE), fields.get(ATTR_DATE_END))
     return asdict(store.async_add(**fields))
 
 
 def _update(store: PinStore, data: dict[str, Any]) -> dict[str, Any]:
     _pin_or_raise(store, data[ATTR_PIN_ID])
+    pin = store.pins[data[ATTR_PIN_ID]]
     fields = {k: v for k, v in data.items() if k not in ("type", "id", ATTR_PIN_ID)}
+    start = fields.get(ATTR_DATE, pin.date)
+    # Clearing the start date clears the end date too.
+    if start is None:
+        fields[ATTR_DATE_END] = None
+    _check_dates(fields, start, fields.get(ATTR_DATE_END, pin.date_end))
     return asdict(store.async_update(data[ATTR_PIN_ID], **fields))
 
 
@@ -206,6 +229,13 @@ def ws_subscribe(
     forward()
 
 
+WS_ERRORS = {
+    "pin_not_found": "Pin not found",
+    "date_range": "The end date is before the start date",
+    "date_end_without_date": "An end date needs a start date",
+}
+
+
 def _ws_write(command: str, schema: dict, action):
     @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/{command}", **schema})
     @callback
@@ -216,8 +246,9 @@ def _ws_write(command: str, schema: dict, action):
             return
         try:
             result = action(store, msg)
-        except ServiceValidationError:
-            connection.send_error(msg["id"], "not_found", "Pin not found")
+        except ServiceValidationError as err:
+            key = err.translation_key or "invalid"
+            connection.send_error(msg["id"], key, WS_ERRORS.get(key, key))
             return
         connection.send_result(msg["id"], result)
 

@@ -24,6 +24,9 @@
           },
           "places": {
             "name": "Luoghi"
+          },
+          "average_rating": {
+            "name": "Voto medio"
           }
         }
       },
@@ -51,6 +54,9 @@
           },
           "places": {
             "name": "Luoghi"
+          },
+          "average_rating": {
+            "name": "Voto medio"
           }
         }
       },
@@ -74,6 +80,12 @@
     },
     "pin_not_found": {
       "message": "Nessuna bandierina con ID {pin_id}."
+    },
+    "date_range": {
+      "message": "La data di fine è prima della data di inizio."
+    },
+    "date_end_without_date": {
+      "message": "Per la data di fine serve anche la data di inizio."
     }
   },
   "services": {
@@ -98,8 +110,8 @@
           "description": "Colore della bandierina, nel formato #rrggbb."
         },
         "date": {
-          "name": "Data",
-          "description": "Quando ci sei stato."
+          "name": "Data (o inizio)",
+          "description": "Il giorno, o il primo giorno del viaggio."
         },
         "notes": {
           "name": "Note",
@@ -108,6 +120,14 @@
         "map": {
           "name": "Mappa",
           "description": "Mappa della bandierina, es. aeroporti (lettere minuscole, cifre e _). Se manca, la mappa predefinita."
+        },
+        "date_end": {
+          "name": "Fine",
+          "description": "Ultimo giorno del viaggio, per un periodo. Vuoto per un giorno solo."
+        },
+        "rating": {
+          "name": "Voto",
+          "description": "Voto da 1 a 5 (i cuoricini nella card)."
         }
       }
     },
@@ -136,8 +156,8 @@
           "description": "Colore della bandierina, nel formato #rrggbb."
         },
         "date": {
-          "name": "Data",
-          "description": "Quando ci sei stato."
+          "name": "Data (o inizio)",
+          "description": "Il giorno, o il primo giorno del viaggio."
         },
         "notes": {
           "name": "Note",
@@ -146,6 +166,14 @@
         "map": {
           "name": "Mappa",
           "description": "Sposta la bandierina su un'altra mappa."
+        },
+        "date_end": {
+          "name": "Fine",
+          "description": "Ultimo giorno del viaggio, per un periodo. Vuoto per un giorno solo."
+        },
+        "rating": {
+          "name": "Voto",
+          "description": "Voto da 1 a 5 (i cuoricini nella card)."
         }
       }
     },

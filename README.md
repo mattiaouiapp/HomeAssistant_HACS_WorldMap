@@ -23,7 +23,7 @@ Copia `custom_components/mmoui_worldmap` in `<config>/custom_components/` e riav
 type: custom:worldmap-card
 ```
 
-- **Aggiungere una bandierina**: clicca sulla mappa, oppure cerca un luogo nella casella in alto e scegli un risultato. Nel modulo che si apre metti nome, colore (12 colori pronti o uno a piacere), data e note. Il nome viene proposto in automatico dal luogo cliccato.
+- **Aggiungere una bandierina**: clicca sulla mappa, oppure cerca un luogo nella casella in alto e scegli un risultato. Nel modulo che si apre metti nome, colore (12 colori pronti o uno a piacere), data (un giorno, oppure un periodo con "Dal" e "Al") e note. Sulle mappe con `rating: true` c'è anche il voto da 1 a 5 cuoricini: tocca di nuovo l'ultimo cuore per toglierlo. Il nome viene proposto in automatico dal luogo cliccato.
 - **Modificare o eliminare**: clicca sulla bandierina.
 - **Filtrare per colore**: sotto la mappa c'è un chip per ogni colore usato. Cliccalo per nascondere o mostrare quelle bandierine.
 - **Paesi**: passa sopra un paese evidenziato per vederne il nome e il numero di bandierine.
@@ -45,20 +45,22 @@ Si impostano tutte anche dall'editor visuale della card.
 | `default_color` | `#e53935` | Colore proposto per la prima bandierina (poi la card ricorda l'ultimo usato) |
 | `center` / `zoom` | — | Vista iniziale fissa, es. `center: [45, 10]`, `zoom: 4`. Senza, la mappa inquadra tutte le bandierine |
 | `airports` | `false` | Mappa di aeroporti: la ricerca trova gli aeroporti per codice IATA/ICAO (MXP, LIRF), nome (Malpensa) o città (Roma, Londra), e un click sulla mappa si aggancia all'aeroporto più vicino entro 40 km |
+| `rating` | `false` | Voto da 1 a 5, mostrato con i cuoricini nel modulo, nei dettagli e nel tooltip (es. per gli hotel) |
+| `poi` | `false` | Un click sulla mappa propone il nome dell'edificio cliccato (hotel, ristorante) invece della città |
 | `readonly` | `false` | Nasconde la ricerca e disattiva aggiunta, modifica ed eliminazione |
 
 ## Entità
 
 | Entità | Stato | Attributi |
 | --- | --- | --- |
-| `sensor.worldmap_places` | Numero di bandierine | `last_place`, `last_country`, `places` (elenco completo: nome, paese, bandiera, colore, data, note; non salvato nello storico) |
+| `sensor.worldmap_places` | Numero di bandierine | `last_place`, `last_country`, `average_rating`, `places` (elenco completo: nome, paese, bandiera, colore, data e `date_end`, voto, note; non salvato nello storico) |
 | `sensor.worldmap_countries` | Numero di paesi visitati | `countries` (nomi), `codes` (codici ISO) |
 
 Questi sono i sensori della mappa predefinita. Ogni altra mappa ha i suoi, `sensor.worldmap_<mappa>_places` e `sensor.worldmap_<mappa>_countries` (es. `sensor.worldmap_aeroporti_places`), con gli stessi attributi; compaiono con la prima bandierina della mappa.
 
 ## Dashboard
 
-[`dashboards/viaggi.yaml`](dashboards/viaggi.yaml) contiene una dashboard con due schede: **Viaggi** (la mappa predefinita) e **Aeroporti** (la mappa `aeroporti`). Ognuna ha la mappa, i numeri, i paesi visitati e l'elenco dei luoghi. Crea una dashboard vuota, apri l'editor della configurazione grezza e incolla il file.
+[`dashboards/viaggi.yaml`](dashboards/viaggi.yaml) contiene una dashboard con tre schede: **Viaggi** (la mappa predefinita), **Aeroporti** (la mappa `aeroporti`, con la ricerca degli aeroporti) e **Hotel** (la mappa `hotel`, con i voti a cuoricini). Ognuna ha la mappa, i numeri (giorni in viaggio, notti in hotel, voto medio…), i paesi visitati e l'elenco dei luoghi. Il file è generato da `dev/gen_dashboard.py`. Crea una dashboard vuota, apri l'editor della configurazione grezza e incolla il file.
 
 ## Servizi
 
@@ -73,6 +75,8 @@ data:
   color: "#1e88e5"
   map: aeroporti  # facoltativo, se manca va sulla mappa predefinita
   date: "2024-05-10"
+  date_end: "2024-05-15"  # facoltativo, per un periodo
+  rating: 4  # facoltativo, da 1 a 5
   notes: Pastéis de nata
 ```
 

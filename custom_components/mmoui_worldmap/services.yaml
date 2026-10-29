@@ -28,6 +28,15 @@ add_pin:
     date:
       selector:
         date:
+    date_end:
+      selector:
+        date:
+    rating:
+      selector:
+        number:
+          min: 1
+          max: 5
+          mode: slider
     notes:
       selector:
         text:
@@ -64,6 +73,15 @@ update_pin:
     date:
       selector:
         date:
+    date_end:
+      selector:
+        date:
+    rating:
+      selector:
+        number:
+          min: 1
+          max: 5
+          mode: slider
     notes:
       selector:
         text:

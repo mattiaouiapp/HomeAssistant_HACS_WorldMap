@@ -24,6 +24,9 @@
           },
           "places": {
             "name": "Places"
+          },
+          "average_rating": {
+            "name": "Average rating"
           }
         }
       },
@@ -51,6 +54,9 @@
           },
           "places": {
             "name": "Places"
+          },
+          "average_rating": {
+            "name": "Average rating"
           }
         }
       },
@@ -74,6 +80,12 @@
     },
     "pin_not_found": {
       "message": "No flag with ID {pin_id}."
+    },
+    "date_range": {
+      "message": "The end date is before the start date."
+    },
+    "date_end_without_date": {
+      "message": "An end date needs a start date."
     }
   },
   "services": {
@@ -98,8 +110,8 @@
           "description": "Flag color as #rrggbb."
         },
         "date": {
-          "name": "Date",
-          "description": "When you were there."
+          "name": "Date (or start)",
+          "description": "The day, or the first day of the trip."
         },
         "notes": {
           "name": "Notes",
@@ -108,6 +120,14 @@
         "map": {
           "name": "Map",
           "description": "Map of the flag, e.g. airports (lowercase letters, digits and _). Defaults to the default map."
+        },
+        "date_end": {
+          "name": "End",
+          "description": "Last day of the trip, for a range. Empty for a single day."
+        },
+        "rating": {
+          "name": "Rating",
+          "description": "Rating from 1 to 5 (hearts in the card)."
         }
       }
     },
@@ -136,8 +156,8 @@
           "description": "Flag color as #rrggbb."
         },
         "date": {
-          "name": "Date",
-          "description": "When you were there."
+          "name": "Date (or start)",
+          "description": "The day, or the first day of the trip."
         },
         "notes": {
           "name": "Notes",
@@ -146,6 +166,14 @@
         "map": {
           "name": "Map",
           "description": "Moves the flag to another map."
+        },
+        "date_end": {
+          "name": "End",
+          "description": "Last day of the trip, for a range. Empty for a single day."
+        },
+        "rating": {
+          "name": "Rating",
+          "description": "Rating from 1 to 5 (hearts in the card)."
         }
       }
     },

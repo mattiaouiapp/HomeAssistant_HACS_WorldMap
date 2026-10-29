@@ -98,14 +98,18 @@ class PlacesSensor(_WorldMapSensor):
                 "flag": flag_emoji(p.country),
                 "color": p.color,
                 "date": p.date,
+                "date_end": p.date_end,
                 "notes": p.notes,
+                "rating": p.rating,
             }
             for p in pins
         ]
         last = places[0] if places else None
+        ratings = [p.rating for p in pins if p.rating]
         self._attr_extra_state_attributes: dict[str, Any] = {
             "last_place": last["name"] if last else None,
             "last_country": last["country"] if last else None,
+            "average_rating": round(sum(ratings) / len(ratings), 1) if ratings else None,
             "places": places,
         }
 

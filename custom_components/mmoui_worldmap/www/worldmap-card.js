@@ -7,7 +7,7 @@
 if (customElements.get("worldmap-card")) return;
 
 // Keep in step with the version in manifest.json.
-const VERSION = "1.2.0";
+const VERSION = "1.3.0";
 const BASE = "/mmoui_worldmap/";
 const asset = (file) => `${BASE}${file}?v=${VERSION}`;
 
@@ -46,14 +46,16 @@ const TILES = {
 const STRINGS = {
   en: {
     title: "My travels", places: "places", countries: "countries", search: "Search a place…",
-    no_results: "No results", name: "Name", color: "Color", date: "Date", notes: "Notes",
+    no_results: "No results", name: "Name", color: "Color", date: "Date", date_from: "From", date_to: "To (optional)", notes: "Notes", rating: "Rating",
+    date_range: "The end date is before the start date",
     save: "Save", cancel: "Cancel", edit: "Edit", delete: "Delete", confirm_delete: "Delete this flag?",
     yes_delete: "Yes, delete", add_here: "New flag", not_loaded: "Set up the MMOUi World Map integration first.",
     error: "Error", all: "All", unknown_place: "New place", filter: "Show",
   },
   it: {
     title: "I miei viaggi", places: "luoghi", countries: "paesi", search: "Cerca un luogo…",
-    no_results: "Nessun risultato", name: "Nome", color: "Colore", date: "Data", notes: "Note",
+    no_results: "Nessun risultato", name: "Nome", color: "Colore", date: "Data", date_from: "Dal", date_to: "Al (facoltativo)", notes: "Note", rating: "Voto",
+    date_range: "La data di fine è prima della data di inizio",
     save: "Salva", cancel: "Annulla", edit: "Modifica", delete: "Elimina", confirm_delete: "Eliminare questa bandierina?",
     yes_delete: "Sì, elimina", add_here: "Nuova bandierina", not_loaded: "Configura prima l'integrazione MMOUi World Map.",
     error: "Errore", all: "Tutti", unknown_place: "Nuovo luogo", filter: "Mostra",
@@ -186,6 +188,10 @@ function nearestVertex(lon, lat, ring) {
   return best;
 }
 
+function hearts(rating) {
+  return rating ? "♥".repeat(rating) + "♡".repeat(5 - rating) : "";
+}
+
 // Keep HA's dashboard shortcuts (e, c, m, …) away from the card's inputs.
 function isolateKeys(node) {
   for (const type of ["keydown", "keyup", "keypress"]) {
@@ -214,6 +220,8 @@ class WorldMapCard extends HTMLElement {
       country_opacity: 0.35,
       readonly: false,
       airports: false,
+      rating: false,
+      poi: false,
       ...config,
       map,
     };
@@ -407,7 +415,8 @@ class WorldMapCard extends HTMLElement {
         title: pin.name,
         riseOnHover: true,
       });
-      marker.bindTooltip(pin.name, { direction: "top", offset: [10, -34] });
+      const tip = this._config.rating && pin.rating ? `${pin.name} ${hearts(pin.rating)}` : pin.name;
+      marker.bindTooltip(tip, { direction: "top", offset: [10, -34], className: "pin-tip" });
       marker.on("click", () => this._openDetails(pin, marker));
       this._markerLayer.addLayer(marker);
     }
@@ -508,12 +517,14 @@ class WorldMapCard extends HTMLElement {
 
   _openDetails(pin, marker) {
     const country = pin.country ? `${flagEmoji(pin.country)} ${this._countryName(pin.country, pin.country_name)}` : "";
-    const date = pin.date ? new Date(`${pin.date}T00:00:00`).toLocaleDateString(this._hass.locale?.language || undefined) : "";
+    const day = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString(this._hass.locale?.language || undefined);
+    const date = pin.date ? (pin.date_end ? `${day(pin.date)} – ${day(pin.date_end)}` : day(pin.date)) : "";
     const actions = el("div", { class: "actions" });
     const content = el("div", { class: "details" },
       el("div", { class: "name" }, el("span", { class: "dot", style: `background:${pin.color}` }), pin.name),
       country ? el("div", { class: "meta" }, country) : null,
       date ? el("div", { class: "meta" }, date) : null,
+      this._config.rating && pin.rating ? el("div", { class: "hearts", title: `${pin.rating}/5` }, hearts(pin.rating)) : null,
       pin.notes ? el("div", { class: "notes" }, pin.notes) : null,
       this._config.readonly ? null : actions);
 
@@ -535,6 +546,29 @@ class WorldMapCard extends HTMLElement {
     let color = pin?.color || this._lastColor() || this._config.default_color || PALETTE[0];
     const name = isolateKeys(el("input", { type: "text", value: pin?.name || suggestedName, placeholder: this._t("name"), required: true }));
     const date = isolateKeys(el("input", { type: "date", value: pin?.date || "" }));
+    const dateEnd = isolateKeys(el("input", { type: "date", value: pin?.date_end || "", min: pin?.date || undefined }));
+    // The end can't come before the start; an end without a start makes no sense.
+    const syncDates = () => {
+      dateEnd.min = date.value;
+      dateEnd.disabled = !date.value;
+      if (!date.value || (dateEnd.value && dateEnd.value < date.value)) dateEnd.value = "";
+    };
+    date.addEventListener("change", syncDates);
+    syncDates();
+    // 1-5 hearts; tapping the current one again clears the rating.
+    let rating = pin?.rating || null;
+    const ratingRow = el("div", { class: "rating-input" }, el("span", { class: "label" }, this._t("rating")));
+    const paintHearts = () => ratingRow.querySelectorAll("button").forEach((b, i) => {
+      b.textContent = rating && i < rating ? "♥" : "♡";
+      b.classList.toggle("on", Boolean(rating && i < rating));
+    });
+    for (let i = 1; i <= 5; i++) {
+      ratingRow.append(el("button", {
+        type: "button", title: `${i}/5`,
+        onclick: () => { rating = rating === i ? null : i; paintHearts(); },
+      }, "♡"));
+    }
+    paintHearts();
     const notes = isolateKeys(el("textarea", { rows: 2, placeholder: this._t("notes") }));
     notes.value = pin?.notes || "";
     const custom = el("input", { type: "color", value: color, title: this._t("color") });
@@ -556,7 +590,10 @@ class WorldMapCard extends HTMLElement {
     const form = el("form", { class: "pin-form" },
       el("div", { class: "form-title" }, preview, pin ? this._t("edit") : this._t("add_here")),
       name, swatches,
-      el("label", {}, this._t("date"), date),
+      el("div", { class: "dates" },
+        el("label", {}, this._t("date_from"), date),
+        el("label", {}, this._t("date_to"), dateEnd)),
+      this._config.rating ? ratingRow : null,
       notes, error,
       el("div", { class: "actions" },
         save,
@@ -565,7 +602,14 @@ class WorldMapCard extends HTMLElement {
       ev.preventDefault();
       if (!name.value.trim()) { name.focus(); return; }
       save.disabled = true;
-      const data = { name: name.value.trim(), color, date: date.value || null, notes: notes.value.trim() };
+      if (dateEnd.value && dateEnd.value < date.value) {
+        error.textContent = this._t("date_range"); error.hidden = false; save.disabled = false; return;
+      }
+      const data = {
+        name: name.value.trim(), color, date: date.value || null,
+        date_end: (date.value && dateEnd.value) || null, notes: notes.value.trim(),
+        ...(this._config.rating ? { rating } : {}),
+      };
       const msg = pin
         ? { type: "mmoui_worldmap/update", pin_id: pin.id, ...data }
         : { type: "mmoui_worldmap/add", map: this._config.map, latitude: latlng.lat, longitude: latlng.lng, ...data };
@@ -610,10 +654,14 @@ class WorldMapCard extends HTMLElement {
 
   async _reverseGeocode(latlng) {
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${latlng.lat}&lon=${latlng.lng}&accept-language=${this._lang()}`);
+      // poi: the building clicked (a hotel, a restaurant), not the town around it.
+      const zoom = this._config.poi ? 18 : 10;
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=${zoom}&lat=${latlng.lat}&lon=${latlng.lng}&accept-language=${this._lang()}`);
       const data = await r.json();
       const a = data.address || {};
-      return a.city || a.town || a.village || a.municipality || a.county || a.state || a.country || data.name || "";
+      const town = a.city || a.town || a.village || a.municipality || a.county || a.state || a.country || "";
+      if (this._config.poi) return data.name ? (town ? `${data.name}, ${town}` : data.name) : town;
+      return town || data.name || "";
     } catch {
       return "";
     }
@@ -709,7 +757,7 @@ class WorldMapCardEditor extends HTMLElement {
     }
     const it = (this._hass.locale?.language || "en").startsWith("it");
     this._form.hass = this._hass;
-    this._form.data = { height: 450, tiles: "auto", show_countries: true, country_opacity: 0.35, readonly: false, airports: false, ...this._config };
+    this._form.data = { height: 450, tiles: "auto", show_countries: true, country_opacity: 0.35, readonly: false, airports: false, rating: false, poi: false, ...this._config };
     this._form.schema = [
       {
         type: "grid", name: "", schema: [
@@ -737,6 +785,8 @@ class WorldMapCardEditor extends HTMLElement {
           { name: "show_countries", label: it ? "Evidenzia i paesi visitati" : "Highlight visited countries", selector: { boolean: {} } },
           { name: "readonly", label: it ? "Sola lettura" : "Read only", selector: { boolean: {} } },
           { name: "airports", label: it ? "Mappa di aeroporti (ricerca per codice IATA/ICAO)" : "Airports map (search by IATA/ICAO code)", selector: { boolean: {} } },
+          { name: "rating", label: it ? "Voto da 1 a 5 (cuoricini)" : "1-5 rating (hearts)", selector: { boolean: {} } },
+          { name: "poi", label: it ? "Click sul luogo preciso (hotel, ristorante)" : "Click names the exact place (hotel, restaurant)", selector: { boolean: {} } },
           { name: "country_color", label: it ? "Colore dei paesi" : "Country color", selector: { text: { type: "color" } } },
           { name: "country_opacity", label: it ? "Opacità dei paesi" : "Country opacity", selector: { number: { min: 0.05, max: 1, step: 0.05, mode: "slider" } } },
         ],
@@ -792,6 +842,11 @@ const CARD_CSS = `
   .preview svg { width: 22px; height: 28px; display: block; }
   .pin-form input[type=text], .pin-form input[type=date], .pin-form textarea { font: inherit; padding: 6px 8px; border: 1px solid var(--divider-color, #ccc); border-radius: 6px; box-sizing: border-box; width: 100%;
     background: var(--secondary-background-color, #fff); color: var(--primary-text-color, #212121); color-scheme: light dark; }
+  .hearts { color: #e91e63; letter-spacing: 2px; margin-top: 4px; font-size: 1.1em; }
+  .rating-input { display: flex; align-items: center; gap: 2px; }
+  .rating-input .label { font-size: .85em; color: var(--secondary-text-color, #555); margin-right: 6px; }
+  .rating-input button { border: 0; background: none; cursor: pointer; padding: 0 2px; font-size: 1.4em; line-height: 1; color: #e91e63; }
+  .pin-form .dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .pin-form label { display: flex; flex-direction: column; gap: 2px; font-size: .85em; color: var(--secondary-text-color, #555); }
   .swatches { display: flex; flex-wrap: wrap; gap: 6px; }
   .swatch { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--card-background-color, #fff); box-shadow: 0 0 0 1px var(--divider-color, #bbb); cursor: pointer; padding: 0; }
