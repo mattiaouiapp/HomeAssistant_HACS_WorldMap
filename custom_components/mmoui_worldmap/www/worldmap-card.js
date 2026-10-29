@@ -1,8 +1,14 @@
 /* MMOUi World Map card: a Leaflet world map with coloured flags on the places
  * you visited and the countries that hold at least one flag highlighted. */
 
-const BASE = new URL(".", import.meta.url).pathname;
-const VERSION = new URL(import.meta.url).searchParams.get("v") || "";
+// Works as a module (auto-loaded by the integration) and as a plain script
+// (a Lovelace resource of type "JavaScript"), and loading it twice is harmless.
+(() => {
+if (customElements.get("worldmap-card")) return;
+
+// Keep in step with the version in manifest.json.
+const VERSION = "1.0.1";
+const BASE = "/mmoui_worldmap/";
 const asset = (file) => `${BASE}${file}?v=${VERSION}`;
 
 const PALETTE = [
@@ -622,3 +628,6 @@ window.customCards.push({
   description: "Mappa del mondo con le bandierine dei posti visitati",
   preview: false,
 });
+
+console.info(`%c WORLDMAP-CARD %c ${VERSION} `, "color:#fff;background:#1e88e5;font-weight:700", "color:#1e88e5;background:#fff");
+})();
