@@ -39,11 +39,12 @@ Si impostano tutte anche dall'editor visuale della card.
 | `height` | `450` | Altezza della mappa in pixel |
 | `tiles` | `auto` | `auto` (chiara o scura secondo il tema), `light`, `dark`, `streets`, `osm`, `satellite` |
 | `tile_url` / `tile_attribution` | — | Un server di tile a scelta, es. `https://tile.openstreetmap.org/{z}/{x}/{y}.png` |
-| `show_countries` | `true` | Evidenzia i paesi visitati |
+| `show_countries` | `true` | Evidenzia i paesi visitati: solo il pezzo di territorio con la bandierina (Parigi accende la Francia continentale, non la Corsica né la Guyana) |
 | `country_color` | colore primario del tema | Colore dei paesi evidenziati |
 | `country_opacity` | `0.35` | Opacità dei paesi evidenziati |
 | `default_color` | `#e53935` | Colore proposto per la prima bandierina (poi la card ricorda l'ultimo usato) |
 | `center` / `zoom` | — | Vista iniziale fissa, es. `center: [45, 10]`, `zoom: 4`. Senza, la mappa inquadra tutte le bandierine |
+| `airports` | `false` | Mappa di aeroporti: la ricerca trova gli aeroporti per codice IATA/ICAO (MXP, LIRF), nome (Malpensa) o città (Roma, Londra), e un click sulla mappa si aggancia all'aeroporto più vicino entro 40 km |
 | `readonly` | `false` | Nasconde la ricerca e disattiva aggiunta, modifica ed eliminazione |
 
 ## Entità
@@ -84,7 +85,7 @@ data:
 - Le bandierine sono salvate in `<config>/.storage/mmoui_worldmap.pins` e quindi finiscono nei backup di Home Assistant.
 - Il paese di ogni bandierina viene calcolato in locale, sui confini [Natural Earth](https://www.naturalearthdata.com) 1:50m inclusi nell'integrazione. Un punto appena fuori dalla costa conta per il paese più vicino, entro circa 30 km.
 - Le tile della mappa arrivano da Esri (o da OpenStreetMap, o dal server indicato). La ricerca e il nome proposto arrivano da [Nominatim](https://nominatim.openstreetmap.org). Le chiamate partono dal browser.
-- [Leaflet](https://leafletjs.com) 1.9.4 è incluso nell'integrazione.
+- [Leaflet](https://leafletjs.com) 1.9.4 è incluso nell'integrazione, come l'elenco dei circa 4.100 aeroporti con codice IATA e voli di linea di [OurAirports](https://ourairports.com) (dati di pubblico dominio).
 
 ## Sviluppo
 

@@ -130,6 +130,7 @@ views:
           - type: custom:worldmap-card
             map: aeroporti
             title: Aeroporti
+            airports: true
             default_color: "#1e88e5"
             height: 560
             grid_options:
@@ -161,7 +162,7 @@ views:
               {% endif %}
               **Mondo visitato:** {{ (countries / 195 * 100) | round(1) }}% dei 195 paesi
               {% else %}
-              Nessun aeroporto ancora: cerca un aeroporto (es. "aeroporto Malpensa") o clicca sulla mappa.
+              Nessun aeroporto ancora: cerca un codice (MXP), un nome (Malpensa) o una città (Roma), oppure clicca vicino a un aeroporto sulla mappa.
               {% endif %}
 
       # ------------------------------------------------------------------ Countries

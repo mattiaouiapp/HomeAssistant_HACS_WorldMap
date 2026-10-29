@@ -7,7 +7,7 @@
 if (customElements.get("worldmap-card")) return;
 
 // Keep in step with the version in manifest.json.
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 const BASE = "/mmoui_worldmap/";
 const asset = (file) => `${BASE}${file}?v=${VERSION}`;
 
@@ -63,6 +63,8 @@ const STRINGS = {
 let leafletPromise;
 let leafletCss;
 let countriesPromise;
+let airportsPromise;
+const NOMINATIM_CACHE = new Map();
 
 function loadLeaflet() {
   leafletPromise ??= new Promise((resolve, reject) => {
@@ -80,6 +82,59 @@ function loadLeaflet() {
 function loadCountries() {
   countriesPromise ??= fetch(asset("countries.geojson")).then((r) => r.json());
   return countriesPromise;
+}
+
+// Airports with an IATA code that are large, medium or have scheduled flights (OurAirports).
+function loadAirports() {
+  airportsPromise ??= fetch(asset("airports.json")).then((r) => r.json()).then((data) =>
+    data.airports.map(([iata, icao, name, city, country, lat, lon, size, keywords]) => ({
+      iata, icao, name, city, country, lat, lon, size,
+      text: fold(`${name} ${city} ${keywords}`),
+    })));
+  return airportsPromise;
+}
+
+const fold = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+// Words people type around an airport name that never appear in the data.
+const AIRPORT_WORDS = /\b(aeroporto|aeroporti|airport|airports|aeropuerto|aeroport|aéroport|flughafen|di|de|del|of|the)\b/g;
+
+function airportLabel(a) {
+  const short = a.name
+    .replace(/\s*\b(International\s+)?Airport\b/gi, "")
+    .replace(/\s+,/g, ",").replace(/^[,\s]+|[,\s]+$/g, "").trim();
+  return `${short || a.name} (${a.iata})`;
+}
+
+function distanceKm(lat1, lon1, lat2, lon2) {
+  const rad = Math.PI / 180;
+  const a = Math.sin(((lat2 - lat1) * rad) / 2) ** 2
+    + Math.cos(lat1 * rad) * Math.cos(lat2 * rad) * Math.sin(((lon2 - lon1) * rad) / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(a));
+}
+
+function searchAirports(airports, query) {
+  const code = query.trim().toUpperCase();
+  const words = fold(query).replace(AIRPORT_WORDS, " ").split(/\s+/).filter((w) => w.length > 1);
+  const scored = [];
+  for (const a of airports) {
+    let score;
+    if (a.iata === code || a.icao === code) score = 0;
+    else if (words.length && words.every((w) => a.text.includes(w))) {
+      score = words.every((w) => fold(a.city).startsWith(w) || fold(a.name).startsWith(w)) ? 1 : 2;
+    } else continue;
+    scored.push([score, -a.size, a]);
+  }
+  scored.sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  return scored.slice(0, 8).map((x) => x[2]);
+}
+
+function airportsNear(airports, lat, lon, km) {
+  return airports
+    .map((a) => [distanceKm(lat, lon, a.lat, a.lon), a])
+    .filter(([d]) => d <= km)
+    .sort((x, y) => (y[1].size - x[1].size) || (x[0] - y[0]))
+    .map(([, a]) => a);
 }
 
 function el(tag, attrs = {}, ...children) {
@@ -114,6 +169,23 @@ function flagSvg(color) {
   </svg>`;
 }
 
+function inRing(lon, lat, ring) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function nearestVertex(lon, lat, ring) {
+  const scale = Math.cos((lat * Math.PI) / 180);
+  let best = Infinity;
+  for (const [x, y] of ring) best = Math.min(best, Math.hypot((x - lon) * scale, y - lat));
+  return best;
+}
+
 // Keep HA's dashboard shortcuts (e, c, m, …) away from the card's inputs.
 function isolateKeys(node) {
   for (const type of ["keydown", "keyup", "keypress"]) {
@@ -141,6 +213,7 @@ class WorldMapCard extends HTMLElement {
       show_countries: true,
       country_opacity: 0.35,
       readonly: false,
+      airports: false,
       ...config,
       map,
     };
@@ -373,13 +446,26 @@ class WorldMapCard extends HTMLElement {
 
   _renderCountries() {
     if (!this._map || !this._geo || !this._config.show_countries) return;
+    // Light up only the piece of the country that holds a flag: Paris lights
+    // mainland France, not Corsica or French Guiana.
     const counts = {};
-    for (const pin of this._visible()) if (pin.country) counts[pin.country] = (counts[pin.country] || 0) + 1;
+    const parts = new Map();
+    for (const pin of this._visible()) {
+      if (!pin.country) continue;
+      counts[pin.country] = (counts[pin.country] || 0) + 1;
+      const part = this._partOf(pin);
+      if (part) parts.set(part.key, part);
+    }
     const color = this._config.country_color
       || getComputedStyle(this).getPropertyValue("--primary-color").trim() || "#03a9f4";
     this._countryLayer.clearLayers();
     const layer = this._L.geoJSON(
-      { type: "FeatureCollection", features: this._geo.features.filter((f) => counts[f.properties.iso]) },
+      {
+        type: "FeatureCollection",
+        features: [...parts.values()].map(({ props, polygon }) => ({
+          type: "Feature", properties: props, geometry: { type: "Polygon", coordinates: polygon },
+        })),
+      },
       {
         interactive: true,
         style: { color, weight: 1, opacity: 0.7, fillColor: color, fillOpacity: Number(this._config.country_opacity) },
@@ -391,6 +477,33 @@ class WorldMapCard extends HTMLElement {
       },
     );
     this._countryLayer.addLayer(layer);
+  }
+
+  // The polygon of the pin's country that contains it, or the nearest one for
+  // a pin just off the coast. Cached per pin position.
+  _partOf(pin) {
+    this._partCache ??= new Map();
+    const cacheKey = `${pin.country}:${pin.latitude}:${pin.longitude}`;
+    if (this._partCache.has(cacheKey)) return this._partCache.get(cacheKey);
+    const lon = pin.longitude;
+    const lat = pin.latitude;
+    let best = null;
+    let bestDistance = Infinity;
+    this._geo.features.forEach((feature, f) => {
+      if (feature.properties.iso !== pin.country) return;
+      feature.geometry.coordinates.forEach((polygon, i) => {
+        const [outer, ...holes] = polygon;
+        const distance = inRing(lon, lat, outer) && !holes.some((h) => inRing(lon, lat, h))
+          ? 0
+          : nearestVertex(lon, lat, outer);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = { key: `${f}:${i}`, props: feature.properties, polygon };
+        }
+      });
+    });
+    this._partCache.set(cacheKey, best);
+    return best;
   }
 
   _openDetails(pin, marker) {
@@ -462,11 +575,25 @@ class WorldMapCard extends HTMLElement {
     });
     paint();
 
-    this._L.popup({ minWidth: 240, maxWidth: 280, className: "form-popup" })
+    const popup = this._L.popup({ minWidth: 240, maxWidth: 280, className: "form-popup" })
       .setLatLng(latlng).setContent(form).openOn(this._map);
     setTimeout(() => name.focus(), 50);
 
-    if (!pin && !suggestedName) this._reverseGeocode(latlng).then((place) => { if (place && !name.value) name.value = place; });
+    if (pin || suggestedName) return;
+    if (this._config.airports) {
+      // On an airports map a click snaps to the nearest airport within 40 km.
+      loadAirports().then((airports) => {
+        const [near] = airportsNear(airports, latlng.lat, latlng.lng, 40)
+          .sort((x, y) => distanceKm(latlng.lat, latlng.lng, x.lat, x.lon) - distanceKm(latlng.lat, latlng.lng, y.lat, y.lon));
+        if (near && !name.value) {
+          name.value = airportLabel(near);
+          latlng = this._L.latLng(near.lat, near.lon);
+          popup.setLatLng(latlng);
+        }
+      });
+    } else {
+      this._reverseGeocode(latlng).then((place) => { if (place && !name.value) name.value = place; });
+    }
   }
 
   _call(msg) {
@@ -495,26 +622,65 @@ class WorldMapCard extends HTMLElement {
   async _doSearch() {
     clearTimeout(this._searchTimer);
     const query = this._search.value.trim();
-    if (query.length < 3) { this._results.hidden = true; return; }
-    let found = [];
-    try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=${encodeURIComponent(query)}&accept-language=${this._lang()}`);
-      found = await r.json();
-    } catch { /* offline */ }
+    if (query.length < 2) { this._results.hidden = true; return; }
+    const results = this._config.airports ? await this._searchAirports(query) : await this._searchPlaces(query);
     if (this._search.value.trim() !== query) return;
-    this._results.replaceChildren(...(found.length
-      ? found.map((place) => el("button", {
+    this._results.replaceChildren(...(results.length
+      ? results.map(({ title, detail, lat, lon, name }) => el("button", {
           class: "result",
           onclick: () => {
             this._results.hidden = true;
             this._search.value = "";
-            const latlng = this._L.latLng(Number(place.lat), Number(place.lon));
-            this._map.flyTo(latlng, Math.max(this._map.getZoom(), 6), { duration: 0.8 });
-            this._map.once("moveend", () => this._openForm(latlng, null, place.name || place.display_name.split(",")[0]));
+            const latlng = this._L.latLng(lat, lon);
+            this._map.flyTo(latlng, Math.max(this._map.getZoom(), this._config.airports ? 9 : 6), { duration: 0.8 });
+            this._map.once("moveend", () => this._openForm(latlng, null, name));
           },
-        }, el("b", {}, place.name || place.display_name.split(",")[0]), el("small", {}, place.display_name)))
+        }, el("b", {}, title), el("small", {}, detail)))
       : [el("div", { class: "empty" }, this._t("no_results"))]));
     this._results.hidden = false;
+  }
+
+  async _nominatim(query, limit) {
+    // Nominatim allows about one request a second: don't ask twice for the same thing.
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=${limit}&q=${encodeURIComponent(query)}&accept-language=${this._lang()}`;
+    if (!NOMINATIM_CACHE.has(url)) {
+      NOMINATIM_CACHE.set(url, fetch(url).then((r) => (r.ok ? r.json() : [])).catch(() => []));
+    }
+    const found = await NOMINATIM_CACHE.get(url);
+    if (!found.length) NOMINATIM_CACHE.delete(url);
+    return found;
+  }
+
+  async _searchPlaces(query) {
+    if (query.length < 3) return [];
+    return (await this._nominatim(query, 6)).map((place) => {
+      const name = place.name || place.display_name.split(",")[0];
+      return { title: name, detail: place.display_name, lat: Number(place.lat), lon: Number(place.lon), name };
+    });
+  }
+
+  async _searchAirports(query) {
+    const airports = await loadAirports();
+    const local = searchAirports(airports, query);
+    const code = query.trim().toUpperCase();
+    if (local[0] && (local[0].iata === code || local[0].icao === code)) return this._airportResults(local);
+    // The data has English names ("Rome", "London"), so also look the query up as
+    // a place and lead with the airports around it: "Roma" finds CIA and FCO.
+    // Name matches follow, so "Orio" still finds Orio al Serio (BGY).
+    const city = fold(query).replace(AIRPORT_WORDS, " ").trim();
+    const [place] = city.length >= 3 ? await this._nominatim(city, 1) : [];
+    const near = place ? airportsNear(airports, Number(place.lat), Number(place.lon), 80) : [];
+    return this._airportResults([...new Set([...near.slice(0, 3), ...local, ...near])].slice(0, 8));
+  }
+
+  _airportResults(found) {
+    return found.map((a) => ({
+      title: `✈ ${a.iata} · ${airportLabel(a).replace(` (${a.iata})`, "")}`,
+      detail: [a.city, a.country, a.icao].filter(Boolean).join(" · "),
+      lat: a.lat,
+      lon: a.lon,
+      name: airportLabel(a),
+    }));
   }
 }
 
@@ -543,7 +709,7 @@ class WorldMapCardEditor extends HTMLElement {
     }
     const it = (this._hass.locale?.language || "en").startsWith("it");
     this._form.hass = this._hass;
-    this._form.data = { height: 450, tiles: "auto", show_countries: true, country_opacity: 0.35, readonly: false, ...this._config };
+    this._form.data = { height: 450, tiles: "auto", show_countries: true, country_opacity: 0.35, readonly: false, airports: false, ...this._config };
     this._form.schema = [
       {
         type: "grid", name: "", schema: [
@@ -570,6 +736,7 @@ class WorldMapCardEditor extends HTMLElement {
         type: "grid", name: "", schema: [
           { name: "show_countries", label: it ? "Evidenzia i paesi visitati" : "Highlight visited countries", selector: { boolean: {} } },
           { name: "readonly", label: it ? "Sola lettura" : "Read only", selector: { boolean: {} } },
+          { name: "airports", label: it ? "Mappa di aeroporti (ricerca per codice IATA/ICAO)" : "Airports map (search by IATA/ICAO code)", selector: { boolean: {} } },
           { name: "country_color", label: it ? "Colore dei paesi" : "Country color", selector: { text: { type: "color" } } },
           { name: "country_opacity", label: it ? "Opacità dei paesi" : "Country opacity", selector: { number: { min: 0.05, max: 1, step: 0.05, mode: "slider" } } },
         ],
