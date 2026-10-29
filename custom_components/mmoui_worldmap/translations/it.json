@@ -1,0 +1,125 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "MMOUi World Map",
+        "description": "Aggiunge la mappa del mondo dei posti visitati. Poi aggiungi la card \"World Map\" a una dashboard."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Già configurata."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "places": {
+        "name": "Luoghi",
+        "unit_of_measurement": "luoghi",
+        "state_attributes": {
+          "last_place": {
+            "name": "Ultimo luogo"
+          },
+          "last_country": {
+            "name": "Ultimo paese"
+          }
+        }
+      },
+      "countries": {
+        "name": "Paesi",
+        "unit_of_measurement": "paesi",
+        "state_attributes": {
+          "countries": {
+            "name": "Paesi"
+          },
+          "codes": {
+            "name": "Codici"
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "MMOUi World Map non è configurata."
+    },
+    "pin_not_found": {
+      "message": "Nessuna bandierina con ID {pin_id}."
+    }
+  },
+  "services": {
+    "add_pin": {
+      "name": "Aggiungi bandierina",
+      "description": "Aggiunge una bandierina alla mappa. Restituisce la nuova bandierina.",
+      "fields": {
+        "name": {
+          "name": "Nome",
+          "description": "Nome del luogo."
+        },
+        "latitude": {
+          "name": "Latitudine",
+          "description": "Latitudine del luogo."
+        },
+        "longitude": {
+          "name": "Longitudine",
+          "description": "Longitudine del luogo."
+        },
+        "color": {
+          "name": "Colore",
+          "description": "Colore della bandierina, nel formato #rrggbb."
+        },
+        "date": {
+          "name": "Data",
+          "description": "Quando ci sei stato."
+        },
+        "notes": {
+          "name": "Note",
+          "description": "Note libere."
+        }
+      }
+    },
+    "update_pin": {
+      "name": "Modifica bandierina",
+      "description": "Modifica una bandierina; cambiano solo i campi indicati.",
+      "fields": {
+        "pin_id": {
+          "name": "ID bandierina",
+          "description": "ID della bandierina, restituito da add_pin o mostrato nella card."
+        },
+        "name": {
+          "name": "Nome",
+          "description": "Nome del luogo."
+        },
+        "latitude": {
+          "name": "Latitudine",
+          "description": "Latitudine del luogo."
+        },
+        "longitude": {
+          "name": "Longitudine",
+          "description": "Longitudine del luogo."
+        },
+        "color": {
+          "name": "Colore",
+          "description": "Colore della bandierina, nel formato #rrggbb."
+        },
+        "date": {
+          "name": "Data",
+          "description": "Quando ci sei stato."
+        },
+        "notes": {
+          "name": "Note",
+          "description": "Note libere."
+        }
+      }
+    },
+    "remove_pin": {
+      "name": "Rimuovi bandierina",
+      "description": "Rimuove una bandierina dalla mappa.",
+      "fields": {
+        "pin_id": {
+          "name": "ID bandierina",
+          "description": "ID della bandierina, restituito da add_pin o mostrato nella card."
+        }
+      }
+    }
+  }
+}

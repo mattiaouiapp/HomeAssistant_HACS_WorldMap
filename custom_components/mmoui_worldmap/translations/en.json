@@ -1,0 +1,125 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "MMOUi World Map",
+        "description": "Adds the world map of the places you visited. Then add the card \"World Map\" to a dashboard."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Already configured."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "places": {
+        "name": "Places",
+        "unit_of_measurement": "places",
+        "state_attributes": {
+          "last_place": {
+            "name": "Last place"
+          },
+          "last_country": {
+            "name": "Last country"
+          }
+        }
+      },
+      "countries": {
+        "name": "Countries",
+        "unit_of_measurement": "countries",
+        "state_attributes": {
+          "countries": {
+            "name": "Countries"
+          },
+          "codes": {
+            "name": "Codes"
+          }
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "not_loaded": {
+      "message": "MMOUi World Map is not set up."
+    },
+    "pin_not_found": {
+      "message": "No flag with ID {pin_id}."
+    }
+  },
+  "services": {
+    "add_pin": {
+      "name": "Add flag",
+      "description": "Adds a flag to the world map. Returns the new flag.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "Name of the place."
+        },
+        "latitude": {
+          "name": "Latitude",
+          "description": "Latitude of the place."
+        },
+        "longitude": {
+          "name": "Longitude",
+          "description": "Longitude of the place."
+        },
+        "color": {
+          "name": "Color",
+          "description": "Flag color as #rrggbb."
+        },
+        "date": {
+          "name": "Date",
+          "description": "When you were there."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Free notes."
+        }
+      }
+    },
+    "update_pin": {
+      "name": "Update flag",
+      "description": "Changes a flag; only the given fields change.",
+      "fields": {
+        "pin_id": {
+          "name": "Pin ID",
+          "description": "ID of the flag, as returned by add_pin or shown in the card."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Name of the place."
+        },
+        "latitude": {
+          "name": "Latitude",
+          "description": "Latitude of the place."
+        },
+        "longitude": {
+          "name": "Longitude",
+          "description": "Longitude of the place."
+        },
+        "color": {
+          "name": "Color",
+          "description": "Flag color as #rrggbb."
+        },
+        "date": {
+          "name": "Date",
+          "description": "When you were there."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Free notes."
+        }
+      }
+    },
+    "remove_pin": {
+      "name": "Remove flag",
+      "description": "Removes a flag from the world map.",
+      "fields": {
+        "pin_id": {
+          "name": "Pin ID",
+          "description": "ID of the flag, as returned by add_pin or shown in the card."
+        }
+      }
+    }
+  }
+}

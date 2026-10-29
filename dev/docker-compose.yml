@@ -1,0 +1,10 @@
+# Local test instance: docker compose -f dev/docker-compose.yml up, then http://localhost:8124
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: worldmap-dev
+    ports:
+      - "8124:8123"
+    volumes:
+      - ./config:/config
+      - ../custom_components:/config/custom_components:ro

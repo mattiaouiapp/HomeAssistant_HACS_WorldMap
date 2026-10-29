@@ -1,0 +1,73 @@
+add_pin:
+  fields:
+    name:
+      required: true
+      example: Lisbona
+      selector:
+        text:
+    latitude:
+      required: true
+      example: 38.72
+      selector:
+        number:
+          min: -90
+          max: 90
+          step: any
+    longitude:
+      required: true
+      example: -9.14
+      selector:
+        number:
+          min: -180
+          max: 180
+          step: any
+    color:
+      example: "#e53935"
+      selector:
+        text:
+    date:
+      selector:
+        date:
+    notes:
+      selector:
+        text:
+          multiline: true
+
+update_pin:
+  fields:
+    pin_id:
+      required: true
+      selector:
+        text:
+    name:
+      selector:
+        text:
+    latitude:
+      selector:
+        number:
+          min: -90
+          max: 90
+          step: any
+    longitude:
+      selector:
+        number:
+          min: -180
+          max: 180
+          step: any
+    color:
+      selector:
+        text:
+    date:
+      selector:
+        date:
+    notes:
+      selector:
+        text:
+          multiline: true
+
+remove_pin:
+  fields:
+    pin_id:
+      required: true
+      selector:
+        text:
